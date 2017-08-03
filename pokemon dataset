@@ -1,0 +1,56 @@
+set.seed(1680)
+library(cluster)
+library(dplyr)
+library(ISLR)
+library(Amelia)
+library(Rtsne)
+library(ggplot2)
+missmap(catch_pokemon)
+catch_pokemon <- read.csv("F:/Pokemon.csv")
+catch_pokemon1 <- catch_pokemon[,c(-1,-3)]
+head(catch_pokemon1)
+str(catch_pokemon)
+catch_pokemon1$Total = as.numeric(catch_pokemon$Total)
+catch_pokemon1$HP=as.numeric(catch_pokemon$HP)
+catch_pokemon1$Attack=as.numeric(catch_pokemon$Attack)
+catch_pokemon1$Defense=as.numeric(catch_pokemon$Defense)
+catch_pokemon1$Sp..Atk=as.numeric(catch_pokemon$Sp..Atk)
+catch_pokemon1$Sp..Def=as.numeric(catch_pokemon$Sp..Def)
+catch_pokemon1$Speed=as.numeric(catch_pokemon$Speed)
+gower_dist <- daisy(catch_pokemon1,metric = "gower")
+class(gower_dist)
+summary(gower_dist)
+gower_mat <- as.matrix(gower_dist)
+class(gower_mat)
+catch_pokemon1[which(gower_mat == min(gower_mat[gower_mat!=min(gower_mat)]),arr.ind = TRUE)[1,],]
+catch_pokemon1[which(gower_mat == max(gower_mat[gower_mat!=max(gower_mat)]),arr.ind =TRUE)[1,],]
+sil_width <- c(NA)
+for(i in 2:15)
+{
+  pam_model <- pam(gower_dist,diss = TRUE,k=i)
+  sil_width[i] <- pam_model$silinfo$avg.width
+}
+plot(1:15,sil_width,
+     xlab = "Number of clusters",
+     ylab = "Silhouette Width")
+lines(1:15,sil_width)
+pam_fit <- pam(gower_dist,diss = TRUE,k=15)
+pam_results <- catch_pokemon1 %>%  mutate(cluster = pam_model$clustering)%>%group_by(cluster)%>%do(the_summary=summary(.))
+pam_results$the_summary
+catch_pokemon1[pam_model$medoids,]
+
+tsne_obj <- Rtsne(gower_dist, is_distance = TRUE)
+tsne_data <- tsne_obj$Y %>%
+  data.frame() %>%
+  setNames(c("X", "Y")) %>%
+  mutate(cluster = factor(pam_model$clustering),
+         name = catch_pokemon$Name)
+ggplot(aes(x = X, y = Y), data = tsne_data) +
+  geom_point(aes(color = cluster))
+tsne_data %>%
+  filter(X > 15 & X < 25,
+         Y > -15 & Y < -10) %>%
+  left_join(catch_pokemon, by = "name") %>%
+  collect %>%
+  .[["Name"]]
+
