@@ -1,0 +1,65 @@
+##Importing the library Functions##
+
+library(rpart)        // Random forest model
+library(Amelia)       // For Missmap function to find missing values  
+library(pROC)         // Area under curve (Acuracy)
+library(rpart.plot)   //Ploting
+
+##Reading the data##
+trainset <- read.csv("F:/test/titanic/train.csv")
+testset <- read.csv("F:/test/titanic/test.csv")
+testset$Survived <- 0                        // Creating column and initializing its value to zero (dummy column)
+missmap(trainset)                            // To Check for missing values
+
+##Cleaning the data##
+
+data <- rbind(trainset,testset)
+data$Name <- as.character(data$Name)
+strsplit(data$Name,split = '[,.]')                      // To split the string example mrs.olseon output :"mrs" "olseon"
+strsplit(data$Name,split='[,.]')[[1]]                      
+strsplit(data$Name,split = '[,.]')[[1]][[2]]
+data$Title <-sapply(data$Name,FUN = function(x){strsplit(x,split = '[,.]')[[1]][[2]]}) //sapply function convert  which works on a list or vector of data. 
+data$Title
+data$Title <- sub('','',data$Title)
+unique(data$Title)
+table(data$Title)
+a=data$Title[data$Title %in% c('lady','the Countess','Mlle','Mme','Ms')] <- 'Miss'   
+b=data$Title[data$Title %in% c('Capt', 'Don', 'Major', 'Sir', 'Col', 'Jonkheer', 'Rev', 'Dr', 'Master')] <- 'Mr'
+c=data$Title[data$Title %in% c('Dona')]<-'Mrs'
+data$Title <- as.factor(data$Title)
+str(data$Title)
+
+#### Predicting the Age (Missing Values)####
+data$Family <- data$SibSp+data$Parch +1                 //The +1 represnt the he/she csn be single.
+predcit_age <- rpart(Age ~ Pclass+Sex+SibSp+Parch+Fare+
+             Embarked+Title+Family,data[!is.na(data$Age),],method="anova")
+data$Age[is.na(data$Age)]<- predict(predcit_age,data[is.na(data$Age),])
+data$Age <- round((data$Age),0)
+
+dim(data)
+rows=1309
+set.seed(100)
+sam = sample(rows,1000)                            //Sampling the data
+train <- data[sam,]
+test <- data[-sam,]
+train$Cabin
+train$Cabin <- substr(train$Cabin,1,1)
+table(train$Cabin)
+train$Cabin[train$Cabin== ""] <-"Q"                      //Replacing all the empty string with Q
+train$Cabin[train$Cabin == "T"] <- "Q"
+test$Cabin
+test$Cabin <-substr(test$Cabin,1,1)
+table(test$Cabin)
+test$Cabin[test$Cabin == ""] <- "Q"
+
+train$Cabin <- as.factor(train$Cabin)
+test$Cabin <- as.factor(test$Cabin)
+
+tree <- rpart(Survived ~ Age + Sex + Pclass+Family, data = train, method = "class", control=rpart.control(cp=0.0001))
+summary(tree)                   
+
+myprediction <- predict(my_tree, test, type = "class")
+head(myprediction)
+vectorpassengerid <- test$PassengerId
+mysol <- data.frame(PassengerId = vectorpassengerid, Survived = myprediction)
+head(mysolution,100,200)
