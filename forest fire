@@ -1,0 +1,37 @@
+#Forest Fire
+
+forestfire = read.csv("F:/project/forestfires.csv")
+head(forestfire)
+library(Amelia)
+missmap(forestfire,main = "missing vs observed")
+str(forestfire)
+forestfire$X = as.numeric(forestfire$X)
+forestfire$Y = as.numeric(forestfire$Y)
+forestfire$month = as.numeric(forestfire$month)
+forestfire$area = as.numeric(forestfire$area)
+forestfire$area
+plot(log(forestfire$area))
+
+model1 <- lm(area ~ .,forestfire)
+
+summary(model1)
+library(car) 
+vif(model1)
+step(model1,forestfire,direction = "both")
+model2 = lm(formula = area ~ X + DMC + RH, data = forestfire,family = binomial)
+model3 = lm(formula = area ~ Y + DC + wind, data = train,family = binomial)
+summary(model2)
+summary(model3)
+dim(forestfire)
+train <- forestfire[1:456,]
+test <- forestfire[457:517,]
+t1 <- predict(model1,test)
+err <- forestfire$area-t1
+
+t2 < predict(model3,test)
+errnew <-forestfire$area -t2
+mean(abs(errnew))
+mean(abs(err))
+sd(abs(errnew))
+sd(abs(err))
+plot(model3,col = "blue")
